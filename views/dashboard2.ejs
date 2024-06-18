@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        input, button {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.add-button {
+            background-color: #28a745; /* Green for Add */
+            color: #fff;
+            border: none;
+          }
+        button.add-button:hover {
+            background-color: #218838;
+        }
+        button.update-button {
+            background-color: #007bff; /* Blue for Update */
+            color: #fff;
+            border: none;
+        }
+        button.update-button:hover {
+            background-color: #0056b3;
+        }
+        button.delete-button {
+            background-color: #dc3545; /* Red for Delete */
+            color: #fff;
+            border: none;
+        }
+        button.delete-button:hover {
+            background-color: #c82333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        #updateFormModal {
+            display: none;
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -20%);
+            border: 1px solid #ddd;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <h1>Items Dashboard</h1>
+
+    <!-- Form for adding a new item -->
+    <form id="addItemForm">
+        <input type="text" name="name" placeholder="Name" required />
+        <input type="text" name="category" placeholder="Category" required />
+        <input type="text" name="rating" placeholder="Rating" required />
+        <input type="text" name="downloads" placeholder="Downloads" required />
+        <button type="submit" class="add-button">Add Item</button>
+    </form>
+
+    <!-- Search form -->
+    <form id="searchItemForm">
+        <input type="text" name="userId" placeholder="User ID" required />
+        <button type="submit">Search User</button>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Rating</th>
+                <th>Downloads</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="itemTableBody">
+            <% games.forEach(item => { %>
+            <tr id="item-<%= item._id %>">
+                <td><%= item._id %></td>
+                <td><%= item.name %></td>
+                <td><%= item.category %></td>
+                <td><%= item.rating %></td>
+                <td><%= item.downloads %></td>
+                <td class="action-buttons">
+                    <button class="update-button" onclick="showUpdateForm('<%= item._id %>', '<%= item.name %>', '<%= item.category %>', '<%= item.rating %>', '<%= item.downloads %>')">Update</button>
+                    <button class="delete-button" onclick="deleteItem('<%= item._id %>')">Delete</button>
+                </td>
+            </tr>
+            <% }) %>
+        </tbody>
+    </table>
+
+    <!-- Update form modal (initially hidden) -->
+    <div id="updateFormModal">
+        <form id="updateForm" method="POST">
+            <input type="text" name="name" placeholder="New Name" required />
+            <input type="text" name="category" placeholder="New Category" required />
+            <input type="text" name="rating" placeholder="New Rating" required />
+            <input type="text" name="downloads" placeholder="New Downloads" required />
+            <button type="submit">Update Item</button>
+        </form>
+        <button onclick="hideUpdateForm()">Cancel</button>
+    </div>
+
+    <script>
+        document.getElementById("addItemForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            fetch("/users/add", {
+                method: "POST",
+                body: JSON.stringify(Object.fromEntries(formData)),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success) {
+                    location.reload(); // Reload the page to update the item list
+                } else {
+                    alert("Failed to add item");
+                }
+            });
+        });
+
+        document.getElementById("searchItemForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const userId = formData.get("userId");
+            fetch(`/users/${userId}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            })
+            .then((response) => response.json())
+            .then((data) => {
+                const itemTableBody = document.getElementById("itemTableBody");
+                if (data) {
+                    itemTableBody.innerHTML = `
+                        <tr id="item-${data._id}">
+                            <td>${data._id}</td>
+                            <td>${data.name}</td>
+                            <td>${data.category}</td>
+                            <td>${data.rating}</td>
+                            <td>${data.downloads}</td>
+                            <td class="action-buttons">
+                                <button onclick="showUpdateForm('${data._id}', '${data.name}', '${data.category}', '${data.rating}', '${data.downloads}')">Update</button>
+                                <button onclick="deleteItem('${data._id}')">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    itemTableBody.innerHTML = `<tr><td colspan="6">User not found</td></tr>`;
+                }
+            })
+            .catch((error) => {
+                console.error(error);
+                alert("Failed to search user");
+            });
+        });
+
+        function showUpdateForm(id, name, category, rating, downloads) {
+            const form = document.getElementById("updateForm");
+            form.action = `/users/update/${id}`;
+            form.elements["name"].value = name;
+            form.elements["category"].value = category;
+            form.elements["rating"].value = rating;
+            form.elements["downloads"].value = downloads;
+            document.getElementById("updateFormModal").style.display = "block";
+        }
+
+        document.getElementById("updateForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            fetch(event.target.action, {
+                method: "PUT",
+                body: JSON.stringify(Object.fromEntries(formData)),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success) {
+                    location.reload(); // Reload the page to update the item list
+                } else {
+                    alert("Failed to update item");
+                }
+            });
+        });
+
+        function hideUpdateForm() {
+            document.getElementById("updateFormModal").style.display = "none";
+        }
+
+        function deleteItem(id) {
+            fetch(`/users/delete/${id}`, {
+                method: "DELETE",
+            })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success) {
+                    document.getElementById(`item-${id}`).remove(); // Remove the item row from the table
+                } else {
+                    alert("Failed to delete item");
+                }
+            });
+        }
+    </script>
+</body>
+</html>
